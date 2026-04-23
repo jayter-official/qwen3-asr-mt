@@ -1,0 +1,18 @@
+# Keep all text files as LF in the repo, regardless of the OS that commits.
+# Critical for shell scripts and Dockerfile entrypoints: CRLF in a shebang
+# line makes the script fail to execute inside a Linux container.
+* text=auto eol=lf
+
+# Explicit for safety.
+*.sh      text eol=lf
+*.py      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.md      text eol=lf
+*.toml    text eol=lf
+Dockerfile text eol=lf
+
+# Binaries (none in repo today, but future-proof).
+*.png     binary
+*.jpg     binary
+*.wav     binary

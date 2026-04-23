@@ -1,0 +1,32 @@
+# One-command deployment.
+#
+#   docker compose up -d
+#
+# Requires NVIDIA Container Toolkit. Model (~1.5 GB for 0.6B) downloads on first
+# boot to the mounted HF cache; subsequent starts reuse it.
+services:
+  qasr-mt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: qasr-mt:0.1.0
+    container_name: qasr-mt
+    ports:
+      - "8111:8000"
+    environment:
+      QASR_MODEL: "Qwen/Qwen3-ASR-0.6B"
+      QASR_GPU_MEM_UTIL: "0.35"
+      QASR_MAX_MODEL_LEN: "8192"
+      QASR_CHUNK_SIZE_SEC: "1.0"
+      NVIDIA_DISABLE_REQUIRE: "1"  # loosen CUDA version pin if host driver < image requirement
+    volumes:
+      - ./hf_cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    shm_size: "2g"
