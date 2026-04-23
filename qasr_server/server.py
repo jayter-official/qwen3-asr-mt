@@ -243,15 +243,22 @@ async def api_sessions():
 
 
 @app.post("/api/start")
-async def api_start(language: Optional[str] = None):
+async def api_start(
+    language: Optional[str] = None,
+    context: Optional[str] = None,
+):
     """Create a new streaming session.
 
     Query params:
       language: optional forced language (e.g. ``Chinese``, ``English``).
                 If provided, passed to Qwen3-ASR to force text-only output.
+      context:  optional hotword / brand hint, e.g. ``"MOMO, 1688, PyTorch"``.
+                If provided, biases acoustic decoding toward these tokens so
+                English brands are less likely to be misheard as same-sounding
+                Chinese characters.
     """
     session_id = uuid.uuid4().hex
-    prompt_raw = prompt_stub._build_text_prompt(context="", force_language=language)
+    prompt_raw = prompt_stub._build_text_prompt(context=context or "", force_language=language)
     chunk_samples = int(round(CFG.chunk_size_sec * SAMPLE_RATE))
     state = StreamingState(
         session_id=session_id,
@@ -264,7 +271,9 @@ async def api_start(language: Optional[str] = None):
     async with SESSIONS_LOCK:
         _gc_sessions_locked()
         SESSIONS[session_id] = state
-    log.debug("start: sid=%s lang=%s", session_id[:8], language)
+    log.debug("start: sid=%s lang=%s context=%s",
+              session_id[:8], language,
+              (context[:40] + "…") if context and len(context) > 40 else context)
     return {"session_id": session_id}
 
 
