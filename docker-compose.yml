@@ -21,6 +21,7 @@ services:
       NVIDIA_DISABLE_REQUIRE: "1"  # loosen CUDA version pin if host driver < image requirement
     volumes:
       - ./hf_cache:/root/.cache/huggingface
+      - ./logs:/app/logs            # decode black-box trace (QASR_TRACE_PATH)
     deploy:
       resources:
         reservations:

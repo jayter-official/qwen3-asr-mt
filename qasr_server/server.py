@@ -54,6 +54,9 @@ from qwen_asr.inference.qwen3_asr import (
     parse_asr_output,
 )
 
+from .vad import has_speech
+from .trace import write_trace
+
 log = logging.getLogger("qasr")
 
 
@@ -73,6 +76,20 @@ class Config:
     max_model_len: int = int(os.environ.get("QASR_MAX_MODEL_LEN", "8192"))
     session_ttl_sec: int = int(os.environ.get("QASR_SESSION_TTL_SEC", "600"))
     dtype: str = os.environ.get("QASR_DTYPE", "auto")
+    # Evidence-driven decode: skip transcription until the session has voiced
+    # speech, so the model is never asked to "transcribe" a near-silent first
+    # chunk (which makes it echo the prompt's context-bias terms). Operational
+    # kill-switch via QASR_VAD_ENABLED=0 if it ever misbehaves.
+    vad_enabled: bool = os.environ.get("QASR_VAD_ENABLED", "1") not in ("0", "false", "False")
+    vad_rms_threshold: float = float(os.environ.get("QASR_VAD_RMS", "0.01"))
+    # Cap leading-silence accumulation while gated; keep this much pre-speech
+    # lookback so the speech onset is never clipped.
+    vad_lookback_sec: float = float(os.environ.get("QASR_VAD_LOOKBACK_SEC", "0.5"))
+    # Black box: append one JSON line per decode (audio len, latency, concurrency,
+    # raw vs parsed output, empty flag) so intermittent failures are diagnosable
+    # after the fact. Disable with QASR_TRACE=0.
+    trace_enabled: bool = os.environ.get("QASR_TRACE", "1") not in ("0", "false", "False")
+    trace_path: str = os.environ.get("QASR_TRACE_PATH", "/app/logs/decode_trace.jsonl")
 
 
 CFG = Config()
@@ -95,6 +112,7 @@ class StreamingState:
     language: str = ""
     text: str = ""
     _raw_decoded: str = ""
+    speech_started: bool = False  # VAD latch: flips True on first voiced audio, stays True
     last_seen: float = field(default_factory=time.time)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -146,6 +164,33 @@ async def _run_decode(state: StreamingState) -> None:
     Ports Qwen3ASRModel.streaming_transcribe's rolling-window / prefix-rollback
     logic to the AsyncLLMEngine generate() API.
     """
+    t0 = time.monotonic()
+    # --- Evidence-driven gate -------------------------------------------------
+    # Never run the model on a window without voiced speech. The first rolling
+    # chunks are usually silence/onset; decoding them makes greedy decode fall
+    # back to echoing the prompt's context-bias tokens ("Claude Code, Jayter,…").
+    # Gate until speech appears; once it does, latch open for the rest of the
+    # session so a mid-utterance pause or quiet tail is never re-gated.
+    if CFG.vad_enabled and not state.speech_started:
+        if has_speech(state.audio_accum, CFG.vad_rms_threshold, SAMPLE_RATE):
+            state.speech_started = True
+        else:
+            # Bound leading-silence growth but retain a short lookback so the
+            # eventual onset isn't clipped. Leave state.text untouched (stays
+            # ""), increment nothing -> chunk_id begins at 0 on first real decode.
+            max_lead = int(CFG.vad_lookback_sec * SAMPLE_RATE)
+            if state.audio_accum.size > max_lead:
+                state.audio_accum = state.audio_accum[-max_lead:].copy()
+            if CFG.trace_enabled:
+                write_trace(CFG.trace_path, {
+                    "t": time.time(), "sid": state.session_id[:8], "chunk_id": state.chunk_id,
+                    "audio_sec": round(state.audio_accum.size / SAMPLE_RATE, 2),
+                    "active_sessions": len(SESSIONS), "vad_gated": True,
+                    "speech_started": False, "decode_ms": 0,
+                    "raw_out": "", "parsed": "", "empty": True,
+                })
+            return
+
     prefix = ""
     if state.chunk_id >= state.unfixed_chunk_num and state._raw_decoded:
         cur_ids = processor.tokenizer.encode(state._raw_decoded)
@@ -171,6 +216,17 @@ async def _run_decode(state: StreamingState) -> None:
     state.language = lang or state.language
     state.text = _sanitize(txt)
     state.chunk_id += 1
+
+    if CFG.trace_enabled:
+        write_trace(CFG.trace_path, {
+            "t": time.time(), "sid": state.session_id[:8], "chunk_id": state.chunk_id - 1,
+            "audio_sec": round(state.audio_accum.size / SAMPLE_RATE, 2),
+            "active_sessions": len(SESSIONS),
+            "decode_ms": int((time.monotonic() - t0) * 1000),
+            "vad_gated": False, "speech_started": state.speech_started,
+            "raw_out": gen_text[:200], "parsed": state.text[:200],
+            "empty": state.text.strip() == "",
+        })
 
 
 # ---------------------------------------------------------------------------
