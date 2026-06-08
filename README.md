@@ -26,7 +26,7 @@ SDK&rsquo;s rolling-decode UX intact.
 ```bash
 git clone https://github.com/jayter-official/qwen3-asr-mt
 cd qwen3-asr-mt
-docker compose up -d           # first boot downloads Qwen3-ASR-0.6B (~1.5 GB)
+docker compose up -d           # first boot downloads Qwen3-ASR-1.7B (~4.4 GB)
 docker compose logs -f         # wait for "Application startup complete"
 
 # concurrent smoke test — two parallel sessions, asserts no cross-talk
@@ -120,7 +120,7 @@ All knobs are environment variables (or CLI flags if running standalone):
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `QASR_MODEL` | `Qwen/Qwen3-ASR-0.6B` | HF repo id or local path. |
+| `QASR_MODEL` | `Qwen/Qwen3-ASR-1.7B` | HF repo id or local path. |
 | `QASR_CHUNK_SIZE_SEC` | `1.0` | Decode a new segment every N seconds of audio. |
 | `QASR_UNFIXED_CHUNK_NUM` | `4` | First N chunks skip prefix conditioning. |
 | `QASR_UNFIXED_TOKEN_NUM` | `5` | Roll back last K tokens each decode for boundary revision. |

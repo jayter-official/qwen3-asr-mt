@@ -128,7 +128,7 @@ Returns service metadata:
 ```json
 {
   "service": "qasr-mt",
-  "model": "Qwen/Qwen3-ASR-0.6B",
+  "model": "Qwen/Qwen3-ASR-1.7B",
   "sessions": 0,
   "chunk_size_sec": 1.0
 }

@@ -2,7 +2,7 @@
 #
 #   docker compose up -d
 #
-# Requires NVIDIA Container Toolkit. Model (~1.5 GB for 0.6B) downloads on first
+# Requires NVIDIA Container Toolkit. Model (~4.4 GB for 1.7B) downloads on first
 # boot to the mounted HF cache; subsequent starts reuse it.
 services:
   qasr-mt:
@@ -14,7 +14,7 @@ services:
     ports:
       - "8111:8000"
     environment:
-      QASR_MODEL: "Qwen/Qwen3-ASR-0.6B"
+      QASR_MODEL: "Qwen/Qwen3-ASR-1.7B"
       QASR_GPU_MEM_UTIL: "0.35"
       QASR_MAX_MODEL_LEN: "8192"
       QASR_CHUNK_SIZE_SEC: "1.0"

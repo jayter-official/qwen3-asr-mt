@@ -65,7 +65,7 @@ log = logging.getLogger("qasr")
 # ---------------------------------------------------------------------------
 @dataclass
 class Config:
-    model: str = os.environ.get("QASR_MODEL", "Qwen/Qwen3-ASR-0.6B")
+    model: str = os.environ.get("QASR_MODEL", "Qwen/Qwen3-ASR-1.7B")
     host: str = os.environ.get("QASR_HOST", "0.0.0.0")
     port: int = int(os.environ.get("QASR_PORT", "8000"))
     chunk_size_sec: float = float(os.environ.get("QASR_CHUNK_SIZE_SEC", "1.0"))

@@ -25,7 +25,7 @@
 ```bash
 git clone https://github.com/jayter-official/qwen3-asr-mt
 cd qwen3-asr-mt
-docker compose up -d           # 首次啟動會下載 Qwen3-ASR-0.6B（約 1.5 GB）
+docker compose up -d           # 首次啟動會下載 Qwen3-ASR-1.7B（約 4.4 GB）
 docker compose logs -f         # 等待出現 "Application startup complete"
 
 # 並發冒煙測試 —— 兩路平行 session，自動驗證無串話
@@ -114,7 +114,7 @@ Readiness probe。引擎預熱完成後回傳 `{"ready": true, "sessions": N}`�
 
 | 變數 | 預設值 | 意義 |
 |------|--------|------|
-| `QASR_MODEL` | `Qwen/Qwen3-ASR-0.6B` | HF repo id 或本地路徑。 |
+| `QASR_MODEL` | `Qwen/Qwen3-ASR-1.7B` | HF repo id 或本地路徑。 |
 | `QASR_CHUNK_SIZE_SEC` | `1.0` | 每累積 N 秒音訊解碼一次。 |
 | `QASR_UNFIXED_CHUNK_NUM` | `4` | 前 N 個 chunk 不套用 prefix 條件。 |
 | `QASR_UNFIXED_TOKEN_NUM` | `5` | 每次解碼回滾最後 K 個 token，用於邊界修正。 |
